@@ -1,0 +1,9 @@
+simulation:
+  h: 0.06277698332    # paso temporal
+  Tmax: 100000        # duracion de la ejecucion (en segundos)
+  N: 10               # numero inicial de cuerpos
+  omega: 0.1          # factor de velocidad inicial para cada cuerpo
+
+plot:
+  plot_posiciones: True
+  plot_velocidades: True

@@ -1,47 +1,79 @@
+import os
+import yaml
+import sys
 import functions
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # necesario para projection='3d'
+from collections import deque
 
-# Variables
-h = 6.277698332/100
-t = 0
+def on_close(event):
+    sys.exit(0)
+
+# Constantes
 G = 6.67*10**-11
 msol = 1.9891*10**30
 ua = 1.496*10**11
-Tmax = 100000
-N = 200
+
+# Variables por configuracion
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(script_dir, "config.yaml")
+with open(config_path, "r") as file:
+    config = yaml.safe_load(file)
+
+h = config["simulation"]["h"]
+Tmax = config["simulation"]["Tmax"]
+N = config["simulation"]["N"]
+omega = config["simulation"]["omega"]
+plot_posiciones = config["plot"]["plot_posiciones"]
+plot_velocidades = config["plot"]["plot_velocidades"]
 
 # Masa de planetas
 m = np.random.rand(N) * 10
-m[np.random.choice(N, size=int(0.3 * N), replace=False)] *= 0.01
+m[np.random.choice(N, size=int(0.3 * N), replace=False)] *= 0.01 # planetas menos masivos
 
 # Posiciones iniciales en 3D
 x = np.random.rand(N, 3) - 0.5
 
 # Velocidad inicial rotacional usando producto vectorial (disco tipo protoplanetario en plano XY)
 eje_rotacion = np.array([0, 0, 1])
-omega = 0.3
 v = omega * np.cross(eje_rotacion, x)
 
-# Estrellas binarias
+# Estrella estatica
 m[0] = 10000000
-m[8] = 10000000
-
-# Estrella 1 estática
 x[0] = 0
 v[0] = 0
+
+# Distancia minima para impacto entre cuerpos
 th = 0.02
 
-plt.ion()
-fig = plt.figure(figsize=(12,6))
-ax1 = fig.add_subplot(121, projection='3d')
-ax2 = fig.add_subplot(122, projection='3d')
+# Traza de los planetas en los ultimos 10 segundos
+trail_seconds = 10
+trail_max_len = max(1, int(trail_seconds / h))
+history_x = deque(maxlen=trail_max_len)
+history_v = deque(maxlen=trail_max_len)
 
+plt.ion()
+
+if plot_posiciones and plot_velocidades:
+    fig = plt.figure(figsize=(12,6))
+    ax1 = fig.add_subplot(121, projection='3d')
+    ax2 = fig.add_subplot(122, projection='3d')
+elif plot_posiciones:
+    fig = plt.figure(figsize=(6, 6))
+    ax1 = fig.add_subplot(111, projection='3d')
+elif plot_velocidades:
+    fig = plt.figure(figsize=(6, 6))
+    ax2 = fig.add_subplot(111, projection='3d')
+
+fig.canvas.mpl_connect('close_event', on_close)
+
+# Comienzo de algoritmo. Calculo de aceleraciones de cada cuerpo en t=0
 a = np.zeros((N,3))
 a = functions.Aceleracion(m, x, N, G)
 
+t = 0
 while t < Tmax:
+    # Calculo de posiciones, velocidades, aceleraciones e impactos en cada instante temporal
     x, w = functions.Posicion(x, v, np.zeros((N,3)), h, a, N)
     a = functions.Aceleracion(m, x, N, G)
     v = functions.Velocidad(v, w, a, h, N)
@@ -49,21 +81,14 @@ while t < Tmax:
 
     t = t + h
 
-    ax1.clear()
-    ax1.set_xlim([-1,1]); ax1.set_ylim([-1,1]); ax1.set_zlim([-1,1])
-    ax1.scatter(x[:,0], x[:,1], x[:,2], color='blue', marker='.')
-    ax1.scatter(x[0,0], x[0,1], x[0,2], color='green', marker='.')
-    if N > 8:
-        ax1.scatter(x[8,0], x[8,1], x[8,2], color='green', marker='.')
-    ax1.set_title(f'Tiempo: {t:.2f}  |  Número de cuerpos: {N}')
+    # Ploteo de los resultados
+    if plot_posiciones:
+        history_x.append(x.copy())  # historial de posiciones
+        functions.PlotPosiciones(ax1, history_x, m, x, t)
 
-    ax2.clear()
-    ax2.set_xlim([-0.1,0.1]); ax2.set_ylim([-0.1,0.1]); ax2.set_zlim([-0.1,0.1])
-    ax2.scatter(v[:,0], v[:,1], v[:,2], color='red', marker='.')
-    ax2.scatter(v[0,0], v[0,1], v[0,2], color='green', marker='.')
-    if N > 8:
-        ax2.scatter(v[8,0], v[8,1], v[8,2], color='green', marker='.')
-    ax2.set_title(f'Tiempo: {t:.2f}  |  Número de cuerpos: {N}')
+    if plot_velocidades:
+        history_v.append(v.copy())  # historial de velocidades
+        functions.PlotVelocidades(ax2, history_v, v, t)
 
     plt.draw()
     plt.pause(0.01)

@@ -48,3 +48,34 @@ def Impacto(m, x, v, w, a, N, threshold):
             j += 1
         i += 1
     return m, x, v, w, a, N
+
+def PlotPosiciones(ax, history_x, m, x, t):
+    ax.clear()
+    ax.set_xlim([-1,1]); ax.set_ylim([-1,1]); ax.set_zlim([-1,1])
+
+    # Rastro: un scatter por snapshot histórico, sin asumir que N es constante
+    n_hist = len(history_x)
+    for i, x_hist in enumerate(history_x):
+        alpha = (i + 1) / n_hist * 0.4  # más antiguo = más transparente
+        ax.scatter(x_hist[:,0], x_hist[:,1], x_hist[:,2], color='gray', alpha=alpha, s=4)
+
+    # Posición actual (con N ya actualizado tras posibles impactos)
+    ax.scatter(x[:,0], x[:,1], x[:,2], c=m, cmap='plasma', vmin=m.min(), vmax=m.max(), marker='o')
+    ax.scatter(x[0,0], x[0,1], x[0,2], color='yellow', marker='o')
+    ax.set_title(f'Tiempo: {t:.2f}  |  Número de cuerpos: {len(x)}')
+
+
+def PlotVelocidades(ax, history_v, v, t):
+    ax.clear()
+    ax.set_xlim([-0.1,0.1]); ax.set_ylim([-0.1,0.1]); ax.set_zlim([-0.1,0.1])
+    
+    # Rastro: un scatter por snapshot histórico, sin asumir que N es constante
+    n_hist = len(history_v)
+    for i, v_hist in enumerate(history_v):
+            alpha = (i + 1) / n_hist * 0.4  # más antiguo = más transparente
+            ax.scatter(v_hist[:,0], v_hist[:,1], v_hist[:,2], color='gray', alpha=alpha, s=4)
+
+    vnorm = np.linalg.norm(v, axis=1)
+    ax.scatter(v[:,0], v[:,1], v[:,2], c=vnorm, cmap='Greens', vmin=vnorm.min(), vmax=vnorm.max(), marker='o')
+    ax.scatter(v[0,0], v[0,1], v[0,2], color='red', marker='o')
+    ax.set_title(f'Tiempo: {t:.2f}  |  Número de cuerpos: {len(v)}')
