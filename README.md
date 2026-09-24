@@ -1,1 +1,1 @@
-# random_projects
+# Personal Projects for fun
